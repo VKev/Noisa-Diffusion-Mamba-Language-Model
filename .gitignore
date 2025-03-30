@@ -2,3 +2,4 @@
 **/__pycache__/*
 **/huggingface/*
 **/lightning_logs/*
+**/checkpoints/*

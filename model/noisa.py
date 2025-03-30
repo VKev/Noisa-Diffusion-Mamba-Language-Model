@@ -8,12 +8,17 @@ try:
 except ImportError:
     from attention import SelfAttention
 
+torch.set_float32_matmul_precision('high')
+
 class Noisa(nn.Module):
-    def __init__(self, vocab_size=50258, embed_dim=512, num_heads=4, dropout=0.2):
+    def __init__(self, vocab_size=50260, embed_dim=256, num_heads=4, dropout=0.1):
         super(Noisa, self).__init__()
         self.tokenEmbed = nn.Embedding(vocab_size, embed_dim)
         self.posEmbed = Summer(PositionalEncoding1D(embed_dim))
-        self.selfAttn = SelfAttention(
+        self.selfAttn1 = SelfAttention(
+            ScaledDotProductAttention(d_model=embed_dim, d_k=embed_dim, d_v=embed_dim, h=num_heads, dropout=dropout)
+        )
+        self.selfAttn2 = SelfAttention(
             ScaledDotProductAttention(d_model=embed_dim, d_k=embed_dim, d_v=embed_dim, h=num_heads, dropout=dropout)
         )
         self.fc_out = nn.Linear(embed_dim, vocab_size)
@@ -21,7 +26,9 @@ class Noisa(nn.Module):
     def forward(self, x, attention_mask=None):
         x = self.tokenEmbed(x)
         x = self.posEmbed(x)
-        x = self.selfAttn(x, attention_mask)
+        x = self.selfAttn1(x, attention_mask)
+        x = F.relu(x)
+        x = self.selfAttn2(x, attention_mask)
         x = F.relu(x)
         logits = self.fc_out(x)
         return logits

@@ -5,15 +5,20 @@ from torch.utils.data import DataLoader
 from datasets import load_from_disk
 from util import Dataset
 from model.noisa import Noisa
+from pytorch_lightning.callbacks import ModelCheckpoint
 import pytorch_lightning as pl
 import torch.nn.functional as F
 
 def get_args():
     parser = argparse.ArgumentParser(description="Train GPT model with PyTorch Lightning")
-    parser.add_argument("--config", type=str, default=r'config/noisa-base.yaml', help="Path to YAML config file")
+    parser.add_argument("--config", type=str, default=r'config/noisa-tiny.yaml', help="Path to YAML config file")
     parser.add_argument("--lr", type=float, default=1e-4, help="Learning rate")
     parser.add_argument("--max_epochs", type=int, default=10, help="Number of training epochs")
-    parser.add_argument("--batch_size", type=int, default=8, help="Batch size")
+    parser.add_argument("--batch_size", type=int, default=1, help="Batch size")
+    parser.add_argument("--max_length", type=int, default=1024, help="Maximum tokenization length")
+    parser.add_argument("--num_heads", type=int, default=4, help="Number of attention head")
+    parser.add_argument("--embed_dim", type=int, default=256, help="Embedding dimension")
+    parser.add_argument("--num_workers", type=int, default=8, help="Number of data loader workers")
     return parser.parse_args()
 
 def load_config(args):
@@ -25,24 +30,35 @@ def load_config(args):
     return args
 
 class TrainingModule(pl.LightningModule):
-    def __init__(self, model, lr=1e-4):
+    def __init__(self, model, lr=1e-4, max_length=1024):
         super().__init__()
         self.model = model
         self.lr = lr
-        self.register_buffer("attention_mask", torch.triu(torch.ones(2048, 2048), diagonal=1).bool())
+        self.model.register_buffer("attention_mask", torch.triu(torch.ones(max_length, max_length), diagonal=1).bool())
 
     def forward(self, input_ids, attention_mask):
         return self.model(input_ids, attention_mask)
 
     def training_step(self, batch, batch_idx):
         input_ids = batch['input_ids']
-        attention_mask = self.attention_mask
+        attention_mask = self.model.attention_mask
         logits = self(input_ids, attention_mask)
         logits = logits[:, :-1, :]
         targets = input_ids[:, 1:]
-        loss = F.cross_entropy(logits.reshape(-1, logits.size(-1)),
-                                 targets.reshape(-1))
+        loss = F.cross_entropy(logits.reshape(-1, logits.size(-1)), targets.reshape(-1))
         self.log("train_loss", loss, on_step=True, on_epoch=True, prog_bar=True)
+        return loss
+
+    def validation_step(self, batch, batch_idx):
+        input_ids = batch['input_ids']
+        attention_mask = self.model.attention_mask
+        logits = self(input_ids, attention_mask)
+        logits = logits[:, :-1, :]
+        targets = input_ids[:, 1:]
+        loss = F.cross_entropy(logits.reshape(-1, logits.size(-1)), targets.reshape(-1))
+        perplexity = torch.exp(loss)
+        self.log("val_loss", loss, on_step=False, on_epoch=True, prog_bar=True)
+        self.log("val_perplexity", perplexity, on_step=False, on_epoch=True, prog_bar=True)
         return loss
 
     def configure_optimizers(self):
@@ -54,19 +70,34 @@ def main():
 
     processed_dataset = load_from_disk("./data/humaneval")
     train_dataset = Dataset(processed_dataset, split='train')
-    train_dataloader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
+    val_dataset = Dataset(processed_dataset, split='test')
+    train_dataloader = DataLoader(train_dataset, batch_size=args.batch_size, num_workers=args.num_workers, shuffle=True)
+    val_dataloader = DataLoader(val_dataset, batch_size=args.batch_size, num_workers=args.num_workers, shuffle=False)
 
-    model = Noisa()
+    model = Noisa(embed_dim=args.embed_dim, num_heads=args.num_heads).to('cuda')
+    print("Model architecture:")
+    print(model)
 
-    training_module = TrainingModule(model=model, lr=args.lr)
+    training_module = TrainingModule(model=model, lr=args.lr, max_length=args.max_length)
 
+    checkpoint_callback = ModelCheckpoint(
+        dirpath="./checkpoints",
+        filename="noisa-{epoch:02d}-{val_loss:.2f}",
+        save_top_k=3,
+        monitor="val_loss",
+        mode="min",
+        save_last=False,
+    )
+    
     trainer = pl.Trainer(
         max_epochs=args.max_epochs,
         accelerator="gpu" if torch.cuda.is_available() else "cpu",
-        devices=1 if torch.cuda.is_available() else None
+        devices=1 if torch.cuda.is_available() else None,
+        log_every_n_steps=10,
+        callbacks=[checkpoint_callback],
     )
 
-    trainer.fit(training_module, train_dataloader)
+    trainer.fit(training_module, train_dataloader, val_dataloader)
 
 if __name__ == "__main__":
     main()
