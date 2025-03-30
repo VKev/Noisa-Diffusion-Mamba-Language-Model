@@ -1,6 +1,6 @@
 import torch
 
-class CustomDataset(torch.utils.data.Dataset):
+class Dataset(torch.utils.data.Dataset):
     def __init__(self, dataset, split='train'):
         self.dataset = dataset[split]
         self.dataset.set_format(type='torch', columns=['input_ids', 'attention_mask'])
