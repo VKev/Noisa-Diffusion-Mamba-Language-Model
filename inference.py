@@ -9,7 +9,7 @@ import yaml
 def get_args():
     parser = argparse.ArgumentParser(description="Inference with trained Noisa model")
     parser.add_argument("--config", type=str, default=r'config/noisa-tiny.yaml', help="Path to YAML config file")
-    parser.add_argument("--model_path", type=str, default=r'./checkpoints/noisa-epoch=42-val_loss=1.92.ckpt', help="Path to the trained model checkpoint")
+    parser.add_argument("--model_path", type=str, default=r'./checkpoints/noisa-epoch=1373-train_loss=0.01.ckpt', help="Path to the trained model checkpoint")
     parser.add_argument("--max_length", type=int, default=1024, help="Maximum tokenization length")
     parser.add_argument("--embed_dim", type=int, default=256, help="Embedding dimension")
     parser.add_argument("--num_heads", type=int, default=4, help="Number of attention heads")
@@ -40,7 +40,7 @@ def load_model(args):
     return model
 
 
-def stream_inference(model, tokenizer, prompt, max_length, temperature=1.0, top_k=50):
+def stream_inference(model, tokenizer, prompt, max_length, temperature=0.2, top_k=50):
     input_ids = tokenizer(prompt, return_tensors="pt").input_ids.to(next(model.parameters()).device)
     eos_token_id = tokenizer.eos_token_id
     with torch.no_grad():

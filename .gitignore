@@ -3,3 +3,4 @@
 **/huggingface/*
 **/lightning_logs/*
 **/checkpoints/*
+**/false/*
