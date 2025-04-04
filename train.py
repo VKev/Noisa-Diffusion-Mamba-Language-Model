@@ -59,8 +59,9 @@ def main():
     args = get_args()
     args = load_config(args)
 
-    processed_dataset = load_from_disk("./data/humaneval")
-    train_dataset = Dataset(processed_dataset, split='train')
+    # processed_dataset = load_from_disk("./data/humaneval")
+    processed_dataset = load_from_disk("./data/c4p0")
+    train_dataset = Dataset(processed_dataset, split='train', columns=['input_ids', 'attention_mask'])
     train_dataloader = DataLoader(train_dataset, batch_size=args.batch_size, num_workers=args.num_workers, shuffle=True)
 
     model = Noisa(embed_dim=args.embed_dim, num_heads=args.num_heads).to('cuda')

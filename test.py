@@ -16,7 +16,7 @@ def get_args():
     parser.add_argument("--num_heads", type=int, default=4, help="Number of attention heads")
     parser.add_argument("--embed_dim", type=int, default=256, help="Embedding dimension")
     parser.add_argument("--num_workers", type=int, default=8, help="Number of data loader workers")
-    parser.add_argument("--model_path", type=str, default=r'checkpoints/noisa-epoch=42-val_loss=1.92.ckpt', help="Path to the trained model checkpoint")
+    parser.add_argument("--model_path", type=str, default=r'checkpoints/noisa-epoch=305-train_loss=0.01.ckpt', help="Path to the trained model checkpoint")
     return parser.parse_args()
 
 def load_config(args):
@@ -53,7 +53,7 @@ def main():
     args = load_config(args)
 
     processed_dataset = load_from_disk("./data/humaneval")
-    test_dataset = Dataset(processed_dataset, split='test')
+    test_dataset = Dataset(processed_dataset, split='train')
     test_dataloader = DataLoader(test_dataset, batch_size=args.batch_size, num_workers=args.num_workers, shuffle=False)
 
     model = Noisa(embed_dim=args.embed_dim, num_heads=args.num_heads).to('cuda')
