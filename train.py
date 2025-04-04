@@ -37,14 +37,14 @@ class TrainingModule(pl.LightningModule):
         super().__init__()
         self.save_hyperparameters(ignore=['model'])
         self.model = model
-        self.model.register_buffer("attention_mask", torch.triu(torch.ones(max_length, max_length), diagonal=1).bool())
 
     def forward(self, input_ids, attention_mask):
         return self.model(input_ids, attention_mask)
 
     def training_step(self, batch, batch_idx):
         input_ids = batch['input_ids']
-        attention_mask = self.model.attention_mask
+        attention_mask = batch['attention_mask']
+        
         logits = self(input_ids, attention_mask)
         logits = logits[:, :-1, :]
         targets = input_ids[:, 1:]

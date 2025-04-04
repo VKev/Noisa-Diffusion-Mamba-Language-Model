@@ -47,13 +47,15 @@ def main():
         }
 
     def tokenize_function(examples):
-        return tokenizer(
+        tokenized = tokenizer(
             examples["text"],
             truncation=True,
             max_length=max_length,
             padding="max_length",
             return_tensors="pt"
         )
+        # Adding attention_mask explicitly to the tokenized output
+        return tokenized
 
     processed_dataset = dataset.map(format_text).map(
         tokenize_function,

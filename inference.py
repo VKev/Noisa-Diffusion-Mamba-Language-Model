@@ -9,7 +9,7 @@ import yaml
 def get_args():
     parser = argparse.ArgumentParser(description="Inference with trained Noisa model")
     parser.add_argument("--config", type=str, default=r'config/noisa-tiny.yaml', help="Path to YAML config file")
-    parser.add_argument("--model_path", type=str, default=r'./checkpoints/noisa-epoch=1341-train_loss=0.00.ckpt', help="Path to the trained model checkpoint")
+    parser.add_argument("--model_path", type=str, default=r'./checkpoints/noisa-epoch=250-train_loss=0.08.ckpt', help="Path to the trained model checkpoint")
     parser.add_argument("--max_length", type=int, default=1024, help="Maximum tokenization length")
     parser.add_argument("--embed_dim", type=int, default=256, help="Embedding dimension")
     parser.add_argument("--num_heads", type=int, default=4, help="Number of attention heads")
@@ -48,6 +48,7 @@ def stream_inference(model, tokenizer, prompt, max_length, temperature=0.1):
         for _ in range(max_length):
             seq_len = input_ids.size(1)
             attention_mask = torch.triu(torch.ones(seq_len, seq_len), diagonal=1).bool().to(input_ids.device)
+            attention_mask = attention_mask.unsqueeze(0).expand(input_ids.size(0), -1, -1)
             logits = model(input_ids, attention_mask=attention_mask)
             next_token_logits = logits[:, -1, :] / temperature
             next_token = torch.argmax(next_token_logits, dim=-1, keepdim=True)
