@@ -4,7 +4,7 @@ import torch
 from torch.utils.data import DataLoader
 from datasets import load_from_disk
 from util import Dataset
-from model.noisa import Noisa
+from model.noisa import TestNoisa
 import pytorch_lightning as pl
 import torch.nn.functional as F
 
@@ -56,7 +56,7 @@ def main():
     test_dataset = Dataset(processed_dataset, split='train')
     test_dataloader = DataLoader(test_dataset, batch_size=args.batch_size, num_workers=args.num_workers, shuffle=False)
 
-    model = Noisa(embed_dim=args.embed_dim, num_heads=args.num_heads).to('cuda')
+    model = TestNoisa(embed_dim=args.embed_dim, num_heads=args.num_heads).to('cuda')
     testing_module = PerplexityModule(model=model, max_length=args.max_length)
 
     print("Loading model from checkpoint...")

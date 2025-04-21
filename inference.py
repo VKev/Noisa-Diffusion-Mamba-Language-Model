@@ -1,15 +1,15 @@
 import argparse
 import torch
-from model.noisa import Noisa
+from model.noisa import TestNoisa
 import pytorch_lightning as pl
 from transformers import AutoTokenizer
 from train import TrainingModule
 import yaml
-
+#A first-summer male
 def get_args():
     parser = argparse.ArgumentParser(description="Inference with trained Noisa model")
     parser.add_argument("--config", type=str, default=r'config/noisa-tiny.yaml', help="Path to YAML config file")
-    parser.add_argument("--model_path", type=str, default=r'./checkpoints/noisa-epoch=250-train_loss=0.08.ckpt', help="Path to the trained model checkpoint")
+    parser.add_argument("--model_path", type=str, default=r'./checkpoints/noisa-epoch=899-train_loss=0.01.ckpt', help="Path to the trained model checkpoint")
     parser.add_argument("--max_length", type=int, default=1024, help="Maximum tokenization length")
     parser.add_argument("--embed_dim", type=int, default=256, help="Embedding dimension")
     parser.add_argument("--num_heads", type=int, default=4, help="Number of attention heads")
@@ -27,7 +27,7 @@ def load_config(args):
 
 
 def load_model(args):
-    model = Noisa(embed_dim=args.embed_dim, num_heads=args.num_heads)
+    model = TestNoisa(embed_dim=args.embed_dim, num_heads=args.num_heads)
     training_module = TrainingModule.load_from_checkpoint(
         args.model_path,
         model=model,
@@ -49,6 +49,7 @@ def stream_inference(model, tokenizer, prompt, max_length, temperature=0.1):
             seq_len = input_ids.size(1)
             attention_mask = torch.triu(torch.ones(seq_len, seq_len), diagonal=1).bool().to(input_ids.device)
             attention_mask = attention_mask.unsqueeze(0).expand(input_ids.size(0), -1, -1)
+            
             logits = model(input_ids, attention_mask=attention_mask)
             next_token_logits = logits[:, -1, :] / temperature
             next_token = torch.argmax(next_token_logits, dim=-1, keepdim=True)

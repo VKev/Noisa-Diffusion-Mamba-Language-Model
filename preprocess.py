@@ -18,6 +18,7 @@ def load_config(args):
             setattr(args, key, value)
     return args
 
+
 def main():
     args = get_args()
     args = load_config(args)
@@ -26,8 +27,8 @@ def main():
     os.makedirs("./huggingface", exist_ok=True)
     os.makedirs("./data", exist_ok=True)
 
-    dataset = load_dataset("alvations/c4p0", cache_dir="./huggingface")
-    # dataset = load_dataset("openai_humaneval", cache_dir="./huggingface")
+    # dataset = load_dataset("alvations/c4p0", cache_dir="./huggingface")
+    dataset = load_dataset("openai_humaneval", cache_dir="./huggingface")
     tokenizer = AutoTokenizer.from_pretrained("gpt2", cache_dir="./huggingface")
     tokenizer.add_special_tokens({'pad_token': '<|pad|>'})
     tokenizer.add_special_tokens({'bos_token': '<|bos|>'})
@@ -35,15 +36,15 @@ def main():
 
     def format_text(example):
         return {
-            # "text": (
-            #     f"<|bos|>{example['prompt']}"
-            #     f"\ncode:\n{example['canonical_solution']}"
-            #     f"\nentry point:\n{example['entry_point']}"
-            #     f"\ntest:\n{example['test']}<|eos|>"
-            # )
             "text": (
-                f"<|bos|>{example['source']}<|eos|>"
+                f"<|bos|>{example['prompt']}"
+                f"\ncode:\n{example['canonical_solution']}"
+                f"\nentry point:\n{example['entry_point']}"
+                f"\ntest:\n{example['test']}<|eos|>"
             )
+            # "text": (
+            #     f"<|bos|>{example['source']}<|eos|>"
+            # )
         }
 
     def tokenize_function(examples):
@@ -63,9 +64,9 @@ def main():
         # remove_columns=["task_id", "prompt", "canonical_solution", "test", "entry_point"]
     )
 
-    # split_dataset = processed_dataset["test"].train_test_split(test_size=0.1, seed=42)
-    split_dataset = processed_dataset["train"].train_test_split(test_size=0.1, seed=42)
-    split_dataset.save_to_disk("./data/c4p0")
+    split_dataset = processed_dataset["test"].train_test_split(test_size=0.1, seed=42)
+    # split_dataset = processed_dataset["train"].train_test_split(test_size=0.1, seed=42)
+    split_dataset.save_to_disk("./data/humaneval")
     tokenizer.save_pretrained("./huggingface/tokenizer")
 
     print("Tokenizer vocab size:", len(tokenizer))

@@ -4,18 +4,19 @@ import torch
 from torch.utils.data import DataLoader
 from datasets import load_from_disk
 from util import Dataset
-from model.noisa import Noisa
+from model.noisa import TestNoisa
 from pytorch_lightning.callbacks import ModelCheckpoint
 import pytorch_lightning as pl
 import torch.nn.functional as F
 import os
-
+import shutil
 
 def get_args():
     parser = argparse.ArgumentParser(description="Train GPT model with PyTorch Lightning")
     parser.add_argument("--config", type=str, default=r'config/noisa-tiny.yaml', help="Path to YAML config file")
     parser.add_argument("--lr", type=float, default=1e-4, help="Learning rate")
     parser.add_argument("--max_epochs", type=int, default=10, help="Number of training epochs")
+    parser.add_argument("--save_each_epochs", type=int, default=20, help="Number of training epochs")
     parser.add_argument("--batch_size", type=int, default=1, help="Batch size")
     parser.add_argument("--max_length", type=int, default=1024, help="Maximum tokenization length")
     parser.add_argument("--num_heads", type=int, default=4, help="Number of attention head")
@@ -60,11 +61,11 @@ def main():
     args = load_config(args)
 
     # processed_dataset = load_from_disk("./data/humaneval")
-    processed_dataset = load_from_disk("./data/c4p0")
+    processed_dataset = load_from_disk("./data/humaneval")
     train_dataset = Dataset(processed_dataset, split='train', columns=['input_ids', 'attention_mask'])
     train_dataloader = DataLoader(train_dataset, batch_size=args.batch_size, num_workers=args.num_workers, shuffle=True)
 
-    model = Noisa(embed_dim=args.embed_dim, num_heads=args.num_heads).to('cuda')
+    model = TestNoisa(embed_dim=args.embed_dim, num_heads=args.num_heads).to('cuda')
     print("Model architecture:")
     print(model)
 
@@ -77,6 +78,7 @@ def main():
         monitor="train_loss",
         mode="min",
         save_last=False,
+        every_n_epochs=args.save_each_epochs 
     )
     
     trainer = pl.Trainer(
@@ -87,6 +89,9 @@ def main():
         callbacks=[checkpoint_callback],
         logger=False
     )
+    
+    shutil.rmtree('./wandb', ignore_errors=True)
+    shutil.rmtree('./lightning_logs', ignore_errors=True)
     if args.resume:
         trainer.fit(training_module, train_dataloader, ckpt_path=args.resume)
     else:
